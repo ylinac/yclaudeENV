@@ -1,6 +1,6 @@
 # 進階英語免修自動化處理系統
 
-處理每學期外教中心提供的進階英語免修集體申請通過名單，自動核對學籍、寫入資料庫，並通知相關人員。
+處理每學期外教中心提供的進階英語免修集體申請通過名單，自動核對學籍、查重、寫入資料庫，並通知相關人員。
 
 ## 流程
 
@@ -8,24 +8,36 @@
 外教中心提供 Excel 名單
         │
         ▼
-核對學籍（MSSQL 65）
-  - 學號是否存在
-  - 姓名是否相符
+┌─ 步驟 1：學籍核對（MSSQL 65）─────────────────┐
+│  - 學號是否存在                                │
+│  - 姓名是否與學籍相符                          │
+│  不符 → 記錄失敗原因，列入報告                 │
+└────────────────────────────────────────────────┘
+        │ 通過
+        ▼
+┌─ 步驟 2：查詢免修紀錄（MSSQL 211 couexe）─────┐
+│  - 已有免修紀錄 → 略過                         │
+│  - 無紀錄 → 進入下一步                         │
+└────────────────────────────────────────────────┘
+        │ 無紀錄
+        ▼
+┌─ 步驟 3：寫入免修資料庫 ───────────────────────┐
+│  批次 INSERT 進 couexe                         │
+└────────────────────────────────────────────────┘
         │
         ▼
-查詢免修紀錄（MSSQL 211 couexe）
-  - 已有紀錄 → 略過
-  - 無紀錄   → 寫入資料庫
+    輸出結果報告
+（成功筆數 / 已存在略過 / 學籍核對失敗清單）
         │
         ▼
-產生通過名單 → 公佈網頁 → Email 通知
+    產生通過名單 → 公佈網頁 → Email 通知
 ```
 
 ## 檔案說明
 
 | 檔案 | 說明 |
 |------|------|
-| `excel_to_mssql.py` | 將 Excel 資料批次匯入 MS SQL Server 的通用工具 |
+| `excel_to_mssql.py` | 主程式：學籍核對、查重、批次寫入 MS SQL Server |
 | `1142進階英語免修集體申請通過名單.xlsx` | 114 學年第 2 學期外教中心提供之通過名單 |
 | `AI自動化系統改善提案.pptx` | 系統改善提案簡報 |
 | `進階英語免修需求.MD` | 需求規格說明 |
@@ -39,24 +51,36 @@
 pip install pandas pyodbc openpyxl
 ```
 
-## 使用方式
+## 設定方式
 
-1. 開啟 `excel_to_mssql.py`，修改頂部的連線設定：
+開啟 `excel_to_mssql.py`，修改頂部的設定區塊：
 
 ```python
-DB_SERVER   = "YOUR_SERVER"
-DB_NAME     = "YOUR_DATABASE"
-DB_USER     = "sa"
-DB_PASSWORD = "YOUR_PASSWORD"
+# 學籍系統（MSSQL 65）
+DB_REGISTRY = {
+    "server":   "192.168.1.65",
+    "database": "YOUR_REGISTRY_DB",
+    "user":     "sa",
+    "password": "YOUR_PASSWORD",
+}
 
-EXCEL_FILE  = r"C:\path\to\your_file.xlsx"
-TABLE_NAME  = "imported_data"
+# 免修系統（MSSQL 211）
+DB_EXEMPTION = {
+    "server":   "192.168.1.211",
+    "database": "YOUR_EXEMPTION_DB",
+    "user":     "sa",
+    "password": "YOUR_PASSWORD",
+}
+
+EXCEL_FILE = r"1142進階英語免修集體申請通過名單.xlsx"
 ```
 
-2. 執行：
+資料表與欄位名稱若與預設不同，也需一併調整（`REGISTRY_TABLE`、`EXEMPTION_TABLE` 等）。
+
+## 執行
 
 ```bash
 python excel_to_mssql.py
 ```
 
-腳本會自動建立資料表（若不存在）並批次寫入資料。
+執行完畢後會印出結果摘要，包含成功寫入筆數、已有紀錄略過的學號，以及學籍核對失敗的清單（學號不存在 / 姓名不符）。
