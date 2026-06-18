@@ -44,11 +44,20 @@
 
 ## 環境需求
 
-- Python 3.8+
-- ODBC Driver 17 for SQL Server
+### 1. 安裝 Python
+
+前往 https://www.python.org/downloads/ 下載 Python 3.8 以上版本。
+
+安裝時務必勾選 **「Add Python to PATH」**，否則終端機找不到 python 指令。
+
+### 2. 安裝 ODBC Driver
+
+前往 Microsoft 官網下載並安裝 **ODBC Driver 17 for SQL Server**。
+
+### 3. 安裝 Python 套件
 
 ```bash
-pip install pandas pyodbc openpyxl
+python -m pip install pandas pyodbc openpyxl
 ```
 
 ## 設定方式
